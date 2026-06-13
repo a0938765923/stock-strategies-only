@@ -6,11 +6,19 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 import pandas as pd
+import requests
 
-from .config import FINMIND_CACHE_DIR
+from .config import (
+    FINMIND_CACHE_DIR,
+    FINMIND_URL,
+    FINMIND_MIN_INTERVAL,
+    RATE_LIMIT_BACKOFF_BASE,
+    RATE_LIMIT_MAX_RETRIES,
+)
 
 
 class FinMindRateLimitError(RuntimeError):
@@ -51,3 +59,50 @@ def clear_cache(dataset: str | None = None, data_id: str | None = None) -> int:
             meta.unlink()
         removed += 1
     return removed
+
+
+_last_request_monotonic = 0.0
+
+
+def _throttle() -> None:
+    """全域最小間隔節流，避免瞬間爆量。"""
+    global _last_request_monotonic
+    now = time.monotonic()
+    wait = FINMIND_MIN_INTERVAL - (now - _last_request_monotonic)
+    if wait > 0:
+        time.sleep(wait)
+    _last_request_monotonic = time.monotonic()
+
+
+def _is_rate_limited(resp) -> bool:
+    if resp.status_code in (402, 429):
+        return True
+    try:
+        body = resp.json()
+    except Exception:
+        return False
+    return (
+        isinstance(body, dict)
+        and body.get("status") not in (200, None)
+        and "request" in str(body.get("msg", "")).lower()
+    )
+
+
+def _rate_limited_get(params: dict, timeout: int, max_retries: int) -> dict:
+    """打 FinMind，處理限流（402/429/body status!=200 含 'request'）：
+    指數退避重試，耗盡 raise FinMindRateLimitError。回傳已解析的 json dict。"""
+    attempt = 0
+    while True:
+        _throttle()
+        resp = requests.get(FINMIND_URL, params=params, timeout=timeout)
+        if _is_rate_limited(resp):
+            if attempt >= RATE_LIMIT_MAX_RETRIES:
+                raise FinMindRateLimitError(
+                    f"FinMind 限流重試 {attempt} 次仍失敗: {params.get('dataset')}"
+                )
+            backoff = min(RATE_LIMIT_BACKOFF_BASE * (2 ** attempt), 120)
+            time.sleep(backoff)
+            attempt += 1
+            continue
+        resp.raise_for_status()
+        return resp.json()
