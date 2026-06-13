@@ -133,3 +133,20 @@ def get_margin(stock_id: str, start: str, as_of: str | None = None) -> pd.DataFr
     df["short_margin_ratio"] = df["short_balance"] / df["margin_balance"].replace(0, pd.NA)
     return df[["date", "margin_balance", "short_balance",
                "margin_chg", "short_chg", "short_margin_ratio"]].reset_index(drop=True)
+
+
+def get_shareholding(stock_id: str, start: str, as_of: str | None = None) -> pd.DataFrame:
+    """外資持股比例（週/不定期）。回 date, foreign_ratio（pct）。
+    頻率不規則 → 因子層用 asof_row 取最近一筆。"""
+    try:
+        df = fetch_finmind_cached("TaiwanStockShareholding", stock_id, start, end_date=as_of)
+    except FinMindRateLimitError:
+        return pd.DataFrame()
+    df = df.rename(columns={"ForeignInvestmentSharesRatio": "foreign_ratio"})
+    if df.empty or not _require_cols(df, ["date", "foreign_ratio"]):
+        return pd.DataFrame()
+    df = df.copy()
+    df["foreign_ratio"] = pd.to_numeric(df["foreign_ratio"], errors="coerce")
+    if as_of:
+        df = df[df["date"] <= pd.to_datetime(as_of)]
+    return df[["date", "foreign_ratio"]].sort_values("date").reset_index(drop=True)
