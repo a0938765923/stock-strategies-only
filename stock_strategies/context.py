@@ -55,8 +55,10 @@ class FactorContext:
 
 
 def _fundamentals_asof(fund_raw: dict, as_of: pd.Timestamp) -> dict:
-    """年度 EPS/ROE 以發布日切片：年度 y 的可用日 = (y+1)-03-31。"""
-    out = {"eps": {}, "roe": {}}
+    """年度 EPS/ROE 以發布日切片：年度 y 的可用日 = (y+1)-03-31。
+    eps_q（單季 EPS）原樣帶過、不在此截片——成長因子 growth._available_quarters
+    已依 as_of 做各季 deadline 過濾（Q1→5/15…Q4→隔年3/31），無 look-ahead。"""
+    out = {"eps": {}, "roe": {}, "eps_q": fund_raw.get("eps_q") or {}}
     for key in ("eps", "roe"):
         for year, val in (fund_raw.get(key) or {}).items():
             publish = pd.Timestamp(year=int(year) + 1, month=3, day=31)
@@ -199,7 +201,8 @@ def build_context(
         )
         bundle = {"price": pd.DataFrame(), "index": pd.DataFrame(), "inst": pd.DataFrame(),
                   "revenue": pd.DataFrame(), "valuation": pd.DataFrame(), "margin": pd.DataFrame(),
-                  "shareholding": pd.DataFrame(), "fundamentals_raw": {"eps": {}, "roe": {}},
+                  "shareholding": pd.DataFrame(),
+                  "fundamentals_raw": {"eps": {}, "roe": {}, "eps_q": {}},
                   "capital": {}}
     ctx = build_context_from_bundle(stock_id, as_of, bundle)
     if strict and ctx.meta.get("missing"):

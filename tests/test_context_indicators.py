@@ -27,3 +27,17 @@ def test_fundamentals_raw_has_eps_q(monkeypatch):
     assert "eps_q" in out
     assert out["eps_q"][(2023, 1)] == 2.5
     assert out["eps_q"][(2023, 2)] == 3.0
+
+
+def test_eps_q_survives_bundle_pipeline():
+    """eps_q 必須通過 build_context_from_bundle 進入 ctx.fundamentals（review Critical #1）。
+    否則 growth.eps_yoy / growth.eps_accel 在真實路徑恆回 0.5。"""
+    import pandas as pd
+    from stock_strategies.context import build_context_from_bundle
+    bundle = {"price": pd.DataFrame(), "index": pd.DataFrame(), "inst": pd.DataFrame(),
+              "revenue": pd.DataFrame(), "valuation": pd.DataFrame(), "margin": pd.DataFrame(),
+              "shareholding": pd.DataFrame(),
+              "fundamentals_raw": {"eps": {}, "roe": {}, "eps_q": {(2023, 1): 2.5, (2023, 2): 3.0}},
+              "capital": {}}
+    ctx = build_context_from_bundle("test", pd.Timestamp("2024-05-20"), bundle)
+    assert ctx.fundamentals.get("eps_q") == {(2023, 1): 2.5, (2023, 2): 3.0}
