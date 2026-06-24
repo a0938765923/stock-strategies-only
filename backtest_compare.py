@@ -99,7 +99,7 @@ def aggregate(returns: list[float]) -> dict:
 def main():
     strategies_dir = Path(__file__).parent / "strategies"
     strategies = []
-    for name in ["default", "conservative", "pro", "elite"]:
+    for name in ["default", "conservative", "pro", "elite", "multifactor"]:
         p = strategies_dir / f"{name}.json"
         if not p.exists():
             print(f"⚠️ 找不到 {p}, 跳過", file=sys.stderr)

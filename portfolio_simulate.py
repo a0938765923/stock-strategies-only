@@ -148,12 +148,17 @@ def kelly_position_for_trade(trade: dict, params: dict, prior_trades: list[dict]
 
 
 def run_portfolio(watchlist: list[dict]) -> dict:
-    """主模擬流程。回傳 dict 含交易、權益曲線、統計指標。"""
+    """主模擬流程。回傳 dict 含交易、權益曲線、統計指標。
+
+    若設定環境變數 STRATEGY_OVERRIDE → 所有股票都用同一個策略（用於對比實驗）
+    """
+    import os as _os
+    override = _os.environ.get("STRATEGY_OVERRIDE", "").strip()
     all_trades = []
     for i, row in enumerate(watchlist, 1):
         sid = str(row["stock_id"]).zfill(4) if str(row["stock_id"]).isdigit() else str(row["stock_id"])
         name = row.get("name", "")
-        strategy_id = str(row.get("strategy_id", "default")).strip() or "default"
+        strategy_id = override or (str(row.get("strategy_id", "default")).strip() or "default")
         print(f"[{i}/{len(watchlist)}] {sid} {name} ({strategy_id})")
         trades = collect_trades_for_stock(sid, name, strategy_id)
         all_trades.extend(trades)
