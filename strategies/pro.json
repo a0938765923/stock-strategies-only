@@ -1,0 +1,35 @@
+{
+  "id": "pro",
+  "name": "PRO 高勝率策略 V1",
+  "description": "目標：勝率 60%+、R/R 2:1。嚴格多重確認：基本面 EPS>6 ROE>18、技術分需 ≥70 才算訊號、總分 ≥75 才 BUY。停損 -6% 停利 +12%（R/R 2:1），持有 15 日。適合資金保護優先、寧可少做不亂做的人。",
+  "source": "manual",
+  "created_at": "2026-06-24T00:00:00Z",
+  "updated_at": "2026-06-24T00:00:00Z",
+  "params": {
+    "eps_threshold": 6.0,
+    "roe_threshold": 18.0,
+    "fundamental_pass_required": true,
+
+    "backtest_years": 3,
+    "hold_days": 15,
+    "min_tech_score_for_signal": 70,
+
+    "target_return": 0.12,
+    "stop_loss": 0.06,
+
+    "weight_fundamental": 0.25,
+    "weight_technical": 0.35,
+    "weight_backtest": 0.40,
+    "min_total_score_for_buy": 75,
+    "min_tech_score_for_buy": 65,
+
+    "use_ma_alignment": true,
+    "use_bollinger_bounce": true,
+    "use_kd_golden_cross": true,
+    "use_macd_bullish": true,
+    "use_volume_patterns": true,
+
+    "market_filter_enabled": true,
+    "market_filter_ma_period": 20
+  }
+}

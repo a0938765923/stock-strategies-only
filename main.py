@@ -28,6 +28,8 @@ from stock_strategies.sheet import (
     write_performance,
 )
 from stock_strategies.evaluate import evaluate
+from stock_strategies.loader import get_strategy
+from stock_strategies.elite_filter import apply_elite_filter
 from stock_strategies.notify import send_telegram, format_messages
 from stock_strategies.market import get_market_state, apply_market_filter
 from stock_strategies.night_session import (
@@ -69,14 +71,20 @@ def main():
     night_note = night_filter_note(night)
     print(f"  → {night_note}")
 
-    # 3. 個股評分
+    # 3. 個股評分（支援每檔個股自選策略 strategy_id）
     results = []
+    strategy_cache: dict = {}
     for i, row in enumerate(watchlist, 1):
         sid = str(row["stock_id"])
         name = row.get("name", "")
-        print(f"[{i}/{len(watchlist)}] {sid} {name}")
-        r = evaluate(sid, name)
+        strategy_id = (str(row.get("strategy_id") or "default")).strip() or "default"
+        if strategy_id not in strategy_cache:
+            strategy_cache[strategy_id] = get_strategy(strategy_id) or get_strategy("default")
+        strategy = strategy_cache[strategy_id]
+        print(f"[{i}/{len(watchlist)}] {sid} {name} ({strategy_id})")
+        r = evaluate(sid, name, strategy=strategy)
         if r:
+            r["strategy_id"] = strategy_id
             results.append(r)
         time.sleep(0.6)
 
@@ -89,6 +97,11 @@ def main():
     night_downgraded = apply_night_filter(results, night)
     if night_downgraded:
         print(f"🌙 昨晚夜盤大跌，{night_downgraded} 檔 BUY 已自動降為 WATCH")
+
+    # 4c. 套用 ELITE 策略額外品質過濾（外資籌碼 + 月營收 YoY）
+    elite_downgraded = apply_elite_filter(results)
+    if elite_downgraded:
+        print(f"⭐ ELITE 額外過濾，{elite_downgraded} 檔 BUY 降為 WATCH（外資退場或營收衰退）")
 
     order = {"BUY": 0, "WATCH": 1, "SKIP": 2, "ERROR": 3}
     results.sort(key=lambda x: (order.get(x.get("action"), 4), -x.get("signal_score", 0)))
