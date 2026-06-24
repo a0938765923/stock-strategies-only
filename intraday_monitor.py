@@ -16,6 +16,8 @@
 import json
 import os
 import sys
+import time
+from collections import deque
 from datetime import datetime, timedelta
 
 import requests
@@ -47,6 +49,17 @@ POS_HEADERS = [
 NEAR_STOP_PCT = 0.02   # 距離停損 < 2% → 黃色預警
 BIG_DROP_PCT = -0.05   # 單日 -5% → 緊急
 ALERT_COOLDOWN_HOURS = 2  # 同警報 2 小時內不重複
+
+# ── twstock 速率保護（TWSE 上限 5 秒 3 請求）──
+# 我們設成 5 秒最多 2 請求（額外緩衝），且最小間隔 2 秒
+_TWSTOCK_MAX_REQ_PER_WINDOW = 2
+_TWSTOCK_WINDOW_SEC = 5.0
+_TWSTOCK_MIN_INTERVAL = 2.0
+_twstock_call_times: deque = deque(maxlen=_TWSTOCK_MAX_REQ_PER_WINDOW)
+
+# 同一 script 執行內，每檔 30 秒內不重複查（cache）
+_TWSTOCK_CACHE_TTL = 30.0
+_twstock_cache: dict[str, tuple[float, dict]] = {}
 
 
 def yahoo_price(stock_id: str) -> dict | None:
@@ -83,22 +96,69 @@ def yahoo_price(stock_id: str) -> dict | None:
     return None
 
 
+def _throttle_twstock():
+    """確保不超過 TWSE 限制（5 秒 3 請求）。
+    我們設 5 秒 2 請求 + 最小 2 秒間隔，留安全緩衝。
+    超出時自動 sleep 補足。
+    """
+    now = time.time()
+    # 規則 1：最小間隔 2 秒
+    if _twstock_call_times:
+        elapsed = now - _twstock_call_times[-1]
+        if elapsed < _TWSTOCK_MIN_INTERVAL:
+            time.sleep(_TWSTOCK_MIN_INTERVAL - elapsed)
+            now = time.time()
+    # 規則 2：5 秒視窗內請求數限制
+    while _twstock_call_times and now - _twstock_call_times[0] > _TWSTOCK_WINDOW_SEC:
+        _twstock_call_times.popleft()
+    if len(_twstock_call_times) >= _TWSTOCK_MAX_REQ_PER_WINDOW:
+        wait = _TWSTOCK_WINDOW_SEC - (now - _twstock_call_times[0]) + 0.1
+        if wait > 0:
+            time.sleep(wait)
+            now = time.time()
+    _twstock_call_times.append(now)
+
+
 def twstock_batch_prices(stock_ids: list[str]) -> dict[str, dict]:
     """一次批次抓多檔即時報價（TWSE 公開 API，延遲 1~2 分鐘）。
     回 {stock_id: {current, previous_close, day_change_pct, source}}
     抓不到的就不會在 dict 裡，呼叫端要自己 fallback 到 yahoo_price。
+
+    安全機制：
+      1. 速率限制（5 秒 2 請求 + 最小 2 秒間隔，留 TWSE 上限緩衝）
+      2. 30 秒記憶體快取（同 script 內重複查直接拿快取）
+      3. 永遠批次呼叫（多檔 = 1 請求）
     """
     if not stock_ids:
         return {}
+
+    # 1. 先用快取濾掉最近查過的
+    now = time.time()
+    cached: dict[str, dict] = {}
+    todo: list[str] = []
+    for sid in stock_ids:
+        sid = str(sid).strip()
+        entry = _twstock_cache.get(sid)
+        if entry and now - entry[0] < _TWSTOCK_CACHE_TTL:
+            cached[sid] = entry[1]
+        else:
+            todo.append(sid)
+
+    # 全部命中快取就不打 API
+    if not todo:
+        return cached
+
+    # 2. 速率限制保護後才打 API
+    _throttle_twstock()
     try:
         import twstock
-        # list 形式呼叫一律回傳 {sid: {...}}，不需額外包一層
-        raw = twstock.realtime.get(list(stock_ids))
+        raw = twstock.realtime.get(list(todo))
     except Exception as e:
         print(f"⚠️ twstock 批次失敗: {str(e)[:80]}", file=sys.stderr)
-        return {}
+        return cached
 
-    out = {}
+    out = dict(cached)  # 從快取拿到的先放進去
+    fetched_at = time.time()
     for sid, data in raw.items():
         if not isinstance(data, dict) or not data.get("success"):
             continue
@@ -113,13 +173,17 @@ def twstock_batch_prices(stock_ids: list[str]) -> dict[str, dict]:
             prev = float(opn_s) if opn_s not in ("-", "", None) else cur
         except (TypeError, ValueError):
             continue
-        out[str(sid).strip()] = {
+        info = {
             "symbol": sid,
             "current": cur,
             "previous_close": prev,
             "day_change_pct": (cur - prev) / prev if prev > 0 else 0,
             "source": "twstock",
         }
+        sid_key = str(sid).strip()
+        out[sid_key] = info
+        # 寫入 cache
+        _twstock_cache[sid_key] = (fetched_at, info)
     return out
 
 
