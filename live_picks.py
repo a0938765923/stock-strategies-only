@@ -5,8 +5,10 @@
   ✅ 1 個 API 請求抓 40 檔（不會觸發 rate limit）
   ✅ 按族群排名 + 當下漲幅 + 大盤 Regime 加權
   ✅ < 30 秒跑完
+  ✅ 設環境變數 PUSH_TELEGRAM=1 → 自動推到 Telegram
 
 執行: uv run python live_picks.py
+推播: PUSH_TELEGRAM=1 uv run python live_picks.py
 """
 
 from __future__ import annotations
@@ -21,7 +23,10 @@ except ImportError:
     pass
 
 from stock_strategies.regime import get_market_regime
+from stock_strategies.notify import send_telegram
 from intraday_monitor import twstock_batch_prices
+
+import os
 
 
 # ============================================================
@@ -192,6 +197,65 @@ def main():
     print("  • 用 ATR 設停損（建議 2~3 倍 ATR）")
     print("  • 強勢族群第一波拉漲時跟，回測再進更安全")
     print("  • 弱勢個股逆勢勿買、即使便宜也別接刀")
+
+    # === Telegram 推播（精簡格式，行動裝置好讀）===
+    if os.environ.get("PUSH_TELEGRAM") in ("1", "true", "True", "yes"):
+        msg = format_telegram(regime, sector_rank, rows_ranked, picks, r_type)
+        try:
+            send_telegram(msg)
+            print("\n📱 Telegram 已推播")
+        except Exception as e:
+            print(f"\n⚠️ Telegram 推播失敗: {e}", file=sys.stderr)
+
+
+def format_telegram(regime: dict, sector_rank: list, rows_ranked: list,
+                    picks: list, r_type: str) -> str:
+    """精簡版盤勢訊息（行動裝置最佳化）"""
+    now = datetime.now()
+    lines = [
+        f"⚡ *盤勢即時推薦* {now.strftime('%m/%d %H:%M')}",
+        "",
+        f"{regime['note']}",
+        "",
+    ]
+
+    # 族群前 3 強
+    lines.append("🔥 *族群強弱前 3 強*")
+    for i, (sector, avg, n) in enumerate(sector_rank[:3], 1):
+        emoji = "🔥" if avg > 1.5 else "📈" if avg > 0 else "📉"
+        lines.append(f"  {i}. {emoji} {sector}: {avg:+.2f}% ({n} 檔)")
+    lines.append("")
+
+    # 個股前 5 強
+    lines.append("🚀 *個股強勢 Top 5*")
+    for r in rows_ranked[:5]:
+        arrow = "🚀" if r["day_pct"] > 3 else "🟢" if r["day_pct"] > 1 else "📈"
+        lines.append(
+            f"  {arrow} *{r['stock_id']} {r['name']}* "
+            f"@ {r['current']:.2f} {r['day_pct']:+.2f}%"
+        )
+    lines.append("")
+
+    # 推薦
+    if r_type == "BULL":
+        lines.append("🎯 *建議追蹤名單*")
+    elif r_type == "BEAR":
+        lines.append("🛡️ *防守名單*")
+    else:
+        lines.append("🦘 *盤整精選*")
+    for r in picks[:5]:
+        lines.append(f"• {r['stock_id']} {r['name']} ({r['sector']})")
+    lines.append("")
+
+    # 弱勢警告
+    lines.append("😱 *今日弱勢（注意停損）*")
+    weak = rows_ranked[-3:]
+    for r in weak:
+        lines.append(f"• {r['stock_id']} {r['name']} {r['day_pct']:+.2f}%")
+    lines.append("")
+
+    lines.append("⚠️ _僅供參考、不構成投資建議、盈虧自負_")
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

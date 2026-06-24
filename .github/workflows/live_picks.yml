@@ -1,0 +1,34 @@
+name: Live Market Picks
+
+on:
+  schedule:
+    # 台灣時間每日 09:30（開盤後 30 分鐘，盤勢漸明）= UTC 01:30，週一到五
+    - cron: '30 1 * * 1-5'
+    # 台灣時間每日 13:00（收盤前 30 分鐘）= UTC 05:00，週一到五
+    - cron: '0 5 * * 1-5'
+  workflow_dispatch:  # 允許手動觸發
+
+jobs:
+  push-live-picks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: uv sync
+
+      - name: Run live picks (with Telegram push)
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PUSH_TELEGRAM: "1"
+        run: uv run python live_picks.py
