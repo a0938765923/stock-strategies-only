@@ -9,15 +9,35 @@ from .config import CONFIG, TELEGRAM_API
 
 
 def send_telegram(text: str):
+    """推送訊息。TELEGRAM_CHAT_ID 支援逗號分隔多人廣播。
+
+    若任一收件人失敗（封鎖 Bot / chat_id 錯誤）→ 印錯誤但繼續發給其他人。
+    所有人失敗才算整體失敗。
+    """
     url = TELEGRAM_API.format(token=os.environ["TELEGRAM_BOT_TOKEN"])
-    payload = {
-        "chat_id": os.environ["TELEGRAM_CHAT_ID"],
-        "text": text,
-        "parse_mode": "Markdown",
-    }
-    r = requests.post(url, json=payload, timeout=10)
-    if not r.ok:
-        print(f"Telegram 送失敗: {r.text}", file=sys.stderr)
+    raw_ids = os.environ["TELEGRAM_CHAT_ID"]
+    chat_ids = [c.strip() for c in raw_ids.split(",") if c.strip()]
+    if not chat_ids:
+        print("⚠️ TELEGRAM_CHAT_ID 為空", file=sys.stderr)
+        return
+
+    ok_count = 0
+    for cid in chat_ids:
+        payload = {
+            "chat_id": cid,
+            "text": text,
+            "parse_mode": "Markdown",
+        }
+        try:
+            r = requests.post(url, json=payload, timeout=10)
+            if r.ok:
+                ok_count += 1
+            else:
+                print(f"Telegram 送 {cid} 失敗: {r.text[:200]}", file=sys.stderr)
+        except Exception as e:
+            print(f"Telegram 送 {cid} 例外: {e}", file=sys.stderr)
+    if ok_count == 0 and chat_ids:
+        print(f"⚠️ 所有 {len(chat_ids)} 個 chat 都失敗", file=sys.stderr)
 
 
 def _trend_emoji(chg: float) -> str:
