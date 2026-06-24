@@ -18,9 +18,10 @@ except ImportError:
     pass
 
 from stock_strategies.night_session import get_night_session
-from stock_strategies.sheet import read_latest_signals
+from stock_strategies.sheet import read_latest_signals, read_performance
 from stock_strategies.notify import send_telegram
 from stock_strategies.config import CONFIG
+from stock_strategies.kelly import position_for_signal
 
 
 REQUIRED_ENV = [
@@ -114,12 +115,32 @@ def format_entry_message(night: dict | None, signals: list[dict]) -> str:
     latest_day = actionable[0].get("date", "")
     batch = [s for s in actionable if s.get("date", "") == latest_day]
 
+    # 先抓 Performance 歷史紀錄供 Kelly 倉位計算
+    try:
+        perf_rows = read_performance()
+    except Exception:
+        perf_rows = []
+
     enters: list[dict] = []
     delays: list[dict] = []
     skips: list[dict] = []
     for s in batch:
         action = str(s.get("action", "")).upper()
         emoji, label, reason = make_decision(action, bias, pct)
+
+        # Kelly 倉位（業界標準動態倉位，取代死板 5%）
+        # 把 Sheet 扁平欄位塞回類 evaluate components 給 kelly 用
+        signal_for_kelly = {
+            "stock_id": s.get("stock_id", ""),
+            "entry_price": s.get("entry_price"),
+            "stop_loss_price": s.get("stop_loss_price"),
+            "target_price": s.get("target_price"),
+            "components": {
+                "backtest_winrate": s.get("winrate"),
+            },
+        }
+        kelly = position_for_signal(signal_for_kelly, perf_rows)
+
         item = {
             "stock_id": s.get("stock_id", ""),
             "name": s.get("name", ""),
@@ -130,6 +151,9 @@ def format_entry_message(night: dict | None, signals: list[dict]) -> str:
             "rr": _fmt_num(s.get("rr_ratio")),
             "reason": reason,
             "label": label,
+            "position_pct": kelly["position_pct"],
+            "position_source": kelly["source"],
+            "position_note": kelly["note"],
         }
         if emoji == "✅":
             enters.append(item)
@@ -144,14 +168,27 @@ def format_entry_message(night: dict | None, signals: list[dict]) -> str:
     # === ✅ 建議進場 ===
     lines.append(f"✅ *建議進場* ({len(enters)} 檔)")
     if enters:
+        total_pct = 0.0
         for it in enters:
+            pos_pct = it.get("position_pct", 0.05) * 100
+            total_pct += pos_pct
             lines.append(
                 f"• *{it['stock_id']} {it['name']}* @ {it['entry']}"
             )
             lines.append(
                 f"  停損 {it['stop']} / 目標 {it['target']} (R/R {it['rr']})"
             )
-        lines.append("_單檔建議 5% 倉位以下、總投入不超過 30%_")
+            lines.append(
+                f"  💰 建議部位 *{pos_pct:.1f}%* — _{it['position_note']}_"
+            )
+        if total_pct > 50:
+            lines.append(
+                f"_⚠️ 總建議部位 {total_pct:.0f}% 過高，建議按比例縮減（總投入 ≤ 50%）_"
+            )
+        else:
+            lines.append(
+                f"_總建議部位 {total_pct:.0f}%（保留 {100-total_pct:.0f}% 現金應變）_"
+            )
     else:
         lines.append("_今日無建議進場標的_")
     lines.append("")

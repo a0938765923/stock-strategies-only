@@ -30,8 +30,10 @@ from stock_strategies.sheet import (
 from stock_strategies.evaluate import evaluate
 from stock_strategies.loader import get_strategy
 from stock_strategies.elite_filter import apply_elite_filter
+from stock_strategies.multifactor import apply_multifactor_filter
 from stock_strategies.notify import send_telegram, format_messages
 from stock_strategies.market import get_market_state, apply_market_filter
+from stock_strategies.regime import get_market_regime, apply_regime_filter
 from stock_strategies.night_session import (
     get_night_session,
     apply_night_filter,
@@ -102,6 +104,21 @@ def main():
     elite_downgraded = apply_elite_filter(results)
     if elite_downgraded:
         print(f"⭐ ELITE 額外過濾，{elite_downgraded} 檔 BUY 降為 WATCH（外資退場或營收衰退）")
+
+    # 4c2. 套用多因子複合評分（業界標準 6 因子，分數重新計算）
+    mf_stats = apply_multifactor_filter(results)
+    if mf_stats["evaluated"]:
+        print(f"🧬 多因子評分 {mf_stats['evaluated']} 檔；強訊號 {mf_stats['strong']} 檔、降級 {mf_stats['demoted']} 檔")
+
+    # 4d. 套用市場 Regime 風控（BULL/BEAR/SIDEWAYS 三段式）
+    print("偵測市場 Regime...")
+    regime = get_market_regime()
+    print(f"  → {regime['note']}")
+    regime_stats = apply_regime_filter(results, regime)
+    if regime_stats["bear_downgraded"]:
+        print(f"  🐻 BEAR Regime，{regime_stats['bear_downgraded']} 檔 BUY 降為 WATCH")
+    elif regime_stats["sideways_kept"]:
+        print(f"  🦘 SIDEWAYS Regime，僅保留前 {regime_stats['sideways_kept']} 名最強 BUY")
 
     order = {"BUY": 0, "WATCH": 1, "SKIP": 2, "ERROR": 3}
     results.sort(key=lambda x: (order.get(x.get("action"), 4), -x.get("signal_score", 0)))
