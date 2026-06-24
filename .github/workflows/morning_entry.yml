@@ -1,0 +1,33 @@
+name: Morning Entry Suggestion
+
+on:
+  schedule:
+    # 台灣時間 08:30 = UTC 00:30 (週一到週五，盤前 30 分鐘)
+    - cron: '30 0 * * 1-5'
+  workflow_dispatch:  # 允許手動觸發測試
+
+jobs:
+  run-entry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: uv sync
+
+      - name: Run morning entry suggestion
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_CREDS_JSON: ${{ secrets.GOOGLE_CREDS_JSON }}
+        run: uv run python morning_entry.py
