@@ -31,6 +31,8 @@ from stock_strategies.evaluate import evaluate
 from stock_strategies.loader import get_strategy
 from stock_strategies.elite_filter import apply_elite_filter
 from stock_strategies.multifactor import apply_multifactor_filter
+from stock_strategies.risk_aggregator import aggregate_warnings
+from stock_strategies.events_calendar import market_event_summary
 from stock_strategies.notify import send_telegram, format_messages
 from stock_strategies.market import get_market_state, apply_market_filter
 from stock_strategies.regime import get_market_regime, apply_regime_filter
@@ -119,6 +121,28 @@ def main():
         print(f"  🐻 BEAR Regime，{regime_stats['bear_downgraded']} 檔 BUY 降為 WATCH")
     elif regime_stats["sideways_kept"]:
         print(f"  🦘 SIDEWAYS Regime，僅保留前 {regime_stats['sideways_kept']} 名最強 BUY")
+
+    # 4e. 4 大風險警示聚合（籌碼+技術+事件+新聞）
+    print("彙整風險警示（籌碼/技術/事件/新聞）...")
+    high_risk_buys = 0
+    for r in results:
+        if r.get("action") not in ("BUY", "WATCH"):
+            continue
+        try:
+            agg = aggregate_warnings(r["stock_id"])
+            r["risk_level"] = agg["risk_level"]
+            r["sentiment"] = agg["sentiment_label"]
+            if agg["all_warnings"]:
+                r.setdefault("risk_notes", []).extend(agg["all_warnings"])
+            # HIGH 風險 BUY 自動降 WATCH
+            if r["action"] == "BUY" and agg["risk_level"] == "HIGH":
+                r["action"] = "WATCH"
+                r["risk_notes"].insert(0, "⚠️ HIGH 風險聚合警示，自動降為 WATCH")
+                high_risk_buys += 1
+        except Exception as e:
+            print(f"  ⚠️ {r['stock_id']} 風險聚合失敗: {str(e)[:60]}")
+    if high_risk_buys:
+        print(f"  🚨 {high_risk_buys} 檔 BUY 因 HIGH 風險警示降為 WATCH")
 
     order = {"BUY": 0, "WATCH": 1, "SKIP": 2, "ERROR": 3}
     results.sort(key=lambda x: (order.get(x.get("action"), 4), -x.get("signal_score", 0)))
