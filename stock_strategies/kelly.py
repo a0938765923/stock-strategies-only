@@ -88,30 +88,50 @@ def stock_history_stats(performance_rows: list[dict], stock_id: str) -> dict | N
     }
 
 
-def position_for_signal(signal: dict, performance_rows: list[dict] | None = None) -> dict:
+def position_for_signal(signal: dict, performance_rows: list[dict] | None = None,
+                        apply_volatility_scaling: bool = True) -> dict:
     """給定一個訊號，回傳建議倉位 dict:
         position_pct: 0~1
         source: "history" 或 "backtest" 或 "default"
         note: 中文說明
+        vol_scale_mul: 波動度倍數（已套用到 position_pct）
+
+    若 apply_volatility_scaling=True，會套用 Barroso & Santa-Clara (2015) 學術論文
+    波動度自適應調整 — 高波動倉位減半、低波動倉位加倍。
     """
     sid = signal.get("stock_id", "")
     components = signal.get("components", {}) or {}
+
+    # 波動度倍數（Barroso 學術論文方法）
+    vol_mul = 1.0
+    vol_note = ""
+    if apply_volatility_scaling and sid:
+        try:
+            from .overheating import volatility_scale_multiplier
+            vs = volatility_scale_multiplier(str(sid).zfill(4) if str(sid).isdigit() else str(sid))
+            vol_mul = float(vs.get("multiplier", 1.0))
+            vol_note = vs.get("note", "")
+        except Exception:
+            vol_mul = 1.0
 
     # 1. 優先用該股的真實歷史
     if performance_rows:
         stats = stock_history_stats(performance_rows, sid)
         if stats:
             f = half_kelly(stats["winrate"], stats["avg_win"], stats["avg_loss"])
+            f_adjusted = max(POSITION_MIN, min(POSITION_MAX, f * vol_mul))
+            base_note = (
+                f"Half-Kelly (歷史 {stats['samples']} 筆 · "
+                f"勝率 {stats['winrate']*100:.0f}% · "
+                f"贏輸比 {stats['avg_win']/stats['avg_loss']:.2f})"
+                if stats["avg_loss"] > 0 else
+                f"Half-Kelly (歷史 {stats['samples']} 筆 · 勝率 {stats['winrate']*100:.0f}%)"
+            )
             return {
-                "position_pct": round(f, 4),
+                "position_pct": round(f_adjusted, 4),
                 "source": "history",
-                "note": (
-                    f"Half-Kelly (歷史 {stats['samples']} 筆 · "
-                    f"勝率 {stats['winrate']*100:.0f}% · "
-                    f"贏輸比 {stats['avg_win']/stats['avg_loss']:.2f})"
-                    if stats["avg_loss"] > 0 else
-                    f"Half-Kelly (歷史 {stats['samples']} 筆 · 勝率 {stats['winrate']*100:.0f}%)"
-                ),
+                "vol_scale_mul": vol_mul,
+                "note": base_note + (f" · {vol_note}" if vol_note and vol_mul != 1.0 else ""),
             }
 
     # 2. 退而用回測 winrate + 預設目標/停損當贏輸
@@ -127,18 +147,23 @@ def position_for_signal(signal: dict, performance_rows: list[dict] | None = None
         avg_win = (target - entry) / entry
         avg_loss = (entry - stop) / entry
         f = half_kelly(bt_winrate, avg_win, avg_loss)
+        f_adjusted = max(POSITION_MIN, min(POSITION_MAX, f * vol_mul))
         return {
-            "position_pct": round(f, 4),
+            "position_pct": round(f_adjusted, 4),
             "source": "backtest",
+            "vol_scale_mul": vol_mul,
             "note": (
                 f"Half-Kelly (回測勝率 {bt_winrate*100:.0f}% · "
                 f"R/R {avg_win/avg_loss:.2f})"
+                + (f" · {vol_note}" if vol_note and vol_mul != 1.0 else "")
             ),
         }
 
-    # 3. 完全沒資料 → 給保守預設 5%
+    # 3. 完全沒資料 → 給保守預設 5%（也套用波動度調整）
+    default_pct = max(POSITION_MIN, min(POSITION_MAX, 0.05 * vol_mul))
     return {
-        "position_pct": 0.05,
+        "position_pct": round(default_pct, 4),
         "source": "default",
-        "note": "Half-Kelly 資料不足，給保守預設 5%",
+        "vol_scale_mul": vol_mul,
+        "note": "Half-Kelly 資料不足，給保守預設 5%" + (f" · {vol_note}" if vol_note and vol_mul != 1.0 else ""),
     }

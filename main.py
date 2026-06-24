@@ -33,6 +33,7 @@ from stock_strategies.elite_filter import apply_elite_filter
 from stock_strategies.multifactor import apply_multifactor_filter
 from stock_strategies.risk_aggregator import aggregate_warnings
 from stock_strategies.events_calendar import market_event_summary
+from stock_strategies.overheating import apply_overheating_filter
 from stock_strategies.notify import send_telegram, format_messages
 from stock_strategies.market import get_market_state, apply_market_filter
 from stock_strategies.regime import get_market_regime, apply_regime_filter
@@ -121,6 +122,14 @@ def main():
         print(f"  🐻 BEAR Regime，{regime_stats['bear_downgraded']} 檔 BUY 降為 WATCH")
     elif regime_stats["sideways_kept"]:
         print(f"  🦘 SIDEWAYS Regime，僅保留前 {regime_stats['sideways_kept']} 名最強 BUY")
+
+    # 4d2. ⭐ V5：追高偵測（Barroso & Santa-Clara 2015 學術論文）
+    print("追高偵測（避免追在山頂）...")
+    overheat_stats = apply_overheating_filter(results)
+    if overheat_stats["strong_downgraded"]:
+        print(f"  🔥 強追高，{overheat_stats['strong_downgraded']} 檔 BUY 降為 WATCH")
+    if overheat_stats["mild_warned"]:
+        print(f"  ⚠️ 輕追高，{overheat_stats['mild_warned']} 檔 BUY 倉位 × 0.5")
 
     # 4e. 4 大風險警示聚合（籌碼+技術+事件+新聞）
     print("彙整風險警示（籌碼/技術/事件/新聞）...")
