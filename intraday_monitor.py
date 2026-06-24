@@ -50,9 +50,8 @@ ALERT_COOLDOWN_HOURS = 2  # 同警報 2 小時內不重複
 
 
 def yahoo_price(stock_id: str) -> dict | None:
-    """從 Yahoo 抓台股最新價（15~20 分鐘延遲）。
+    """從 Yahoo 抓台股最新價（15~20 分鐘延遲）— 作為 twstock 的備援。
     依序試 .TW (上市) → .TWO (上櫃)。失敗回 None。
-    回 dict: {symbol, current, previous_close, day_change_pct}
     """
     for suffix in (".TW", ".TWO"):
         symbol = f"{stock_id}{suffix}"
@@ -77,10 +76,61 @@ def yahoo_price(stock_id: str) -> dict | None:
                 "current": float(cur),
                 "previous_close": float(prev),
                 "day_change_pct": (float(cur) - float(prev)) / float(prev),
+                "source": "yahoo",
             }
         except Exception:
             continue
     return None
+
+
+def twstock_batch_prices(stock_ids: list[str]) -> dict[str, dict]:
+    """一次批次抓多檔即時報價（TWSE 公開 API，延遲 1~2 分鐘）。
+    回 {stock_id: {current, previous_close, day_change_pct, source}}
+    抓不到的就不會在 dict 裡，呼叫端要自己 fallback 到 yahoo_price。
+    """
+    if not stock_ids:
+        return {}
+    try:
+        import twstock
+        # list 形式呼叫一律回傳 {sid: {...}}，不需額外包一層
+        raw = twstock.realtime.get(list(stock_ids))
+    except Exception as e:
+        print(f"⚠️ twstock 批次失敗: {str(e)[:80]}", file=sys.stderr)
+        return {}
+
+    out = {}
+    for sid, data in raw.items():
+        if not isinstance(data, dict) or not data.get("success"):
+            continue
+        rt = data.get("realtime", {})
+        cur_s = rt.get("latest_trade_price", "-")
+        opn_s = rt.get("open", "-")
+        if cur_s in ("-", "", None):
+            continue
+        try:
+            cur = float(cur_s)
+            # 用「今日開盤」作為日內變化的基準（盤中監控核心是現價 vs 停損/停利）
+            prev = float(opn_s) if opn_s not in ("-", "", None) else cur
+        except (TypeError, ValueError):
+            continue
+        out[str(sid).strip()] = {
+            "symbol": sid,
+            "current": cur,
+            "previous_close": prev,
+            "day_change_pct": (cur - prev) / prev if prev > 0 else 0,
+            "source": "twstock",
+        }
+    return out
+
+
+def fetch_price(stock_id: str) -> dict | None:
+    """主入口：twstock 為主、Yahoo 為備援。
+    （單檔查詢；批次請用 twstock_batch_prices 較有效率）
+    """
+    batch = twstock_batch_prices([stock_id])
+    if stock_id in batch:
+        return batch[stock_id]
+    return yahoo_price(stock_id)
 
 
 def read_positions(ws) -> tuple[list[dict], dict[int, dict]]:
@@ -197,14 +247,22 @@ def main():
         print("✅ 沒有 HOLDING 部位，無需監控")
         return
 
+    # 1. 一次批次抓所有部位的價格（twstock 為主）
+    all_ids = [str(pos["stock_id"]).strip() for pos in holdings]
+    batch = twstock_batch_prices(all_ids)
+    print(f"  twstock 批次抓到 {len(batch)}/{len(all_ids)} 檔")
+
     triggered = 0
     for pos in holdings:
         sid = str(pos["stock_id"]).strip()
         print(f"檢查 {sid} {pos.get('name', '')}...")
-        price = yahoo_price(sid)
+
+        # 優先用 twstock 即時，失敗 fallback yahoo
+        price = batch.get(sid) or yahoo_price(sid)
         if not price:
             print(f"  ⚠️ 抓不到價格")
             continue
+        print(f"  資料源: {price.get('source', '?')}")
 
         alerts = evaluate_position(pos, price)
         if not alerts:

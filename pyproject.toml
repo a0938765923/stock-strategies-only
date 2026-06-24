@@ -15,6 +15,7 @@ dependencies = [
     "pydantic>=2.9.0",
     "google-generativeai>=0.8.0",
     "pyarrow>=24.0.0",
+    "twstock>=1.5.1",
 ]
 
 [dependency-groups]
