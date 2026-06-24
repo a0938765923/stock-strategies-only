@@ -1,44 +1,54 @@
 {
   "summaries": {
     "default": {
-      "samples": 23627,
+      "samples": 23595,
       "winrate": 48.8,
-      "avg": 0.33,
+      "avg": 0.34,
       "best": 10.0,
       "worst": -8.0,
       "std": 6.99,
-      "sharpe_like": 0.047,
-      "expected_value": 0.33
+      "sharpe_like": 0.049,
+      "expected_value": 0.34
     },
     "conservative": {
-      "samples": 9300,
+      "samples": 9286,
       "winrate": 42.6,
-      "avg": -0.09,
+      "avg": -0.08,
       "best": 8.0,
       "worst": -5.0,
       "std": 5.02,
-      "sharpe_like": -0.018,
-      "expected_value": -0.09
+      "sharpe_like": -0.016,
+      "expected_value": -0.08
     },
     "pro": {
-      "samples": 9300,
+      "samples": 9286,
       "winrate": 44.6,
-      "avg": 0.33,
+      "avg": 0.34,
       "best": 12.0,
       "worst": -6.0,
       "std": 6.23,
-      "sharpe_like": 0.054,
-      "expected_value": 0.33
+      "sharpe_like": 0.055,
+      "expected_value": 0.34
     },
     "elite": {
-      "samples": 9150,
-      "winrate": 41.5,
-      "avg": 0.3,
+      "samples": 9136,
+      "winrate": 41.6,
+      "avg": 0.31,
       "best": 12.0,
       "worst": -5.0,
-      "std": 6.09,
-      "sharpe_like": 0.049,
-      "expected_value": 0.3
+      "std": 6.1,
+      "sharpe_like": 0.05,
+      "expected_value": 0.31
+    },
+    "multifactor": {
+      "samples": 23595,
+      "winrate": 44.7,
+      "avg": 0.25,
+      "best": 10.0,
+      "worst": -6.0,
+      "std": 6.36,
+      "sharpe_like": 0.039,
+      "expected_value": 0.25
     }
   },
   "per_stock_pro": {
@@ -53,13 +63,13 @@
       "expected_value": 3.31
     },
     "2454": {
-      "samples": 71,
-      "winrate": 53.5,
+      "samples": 70,
+      "winrate": 52.9,
       "avg": 1.68,
       "best": 12.0,
       "worst": -6.0,
-      "std": 7.05,
-      "sharpe_like": 0.239,
+      "std": 7.1,
+      "sharpe_like": 0.236,
       "expected_value": 1.68
     },
     "2379": {
@@ -83,14 +93,14 @@
       "expected_value": 1.42
     },
     "3037": {
-      "samples": 79,
-      "winrate": 46.8,
-      "avg": 1.43,
+      "samples": 78,
+      "winrate": 47.4,
+      "avg": 1.53,
       "best": 12.0,
       "worst": -6.0,
       "std": 8.12,
-      "sharpe_like": 0.176,
-      "expected_value": 1.43
+      "sharpe_like": 0.188,
+      "expected_value": 1.53
     },
     "3661": {
       "samples": 34,
@@ -123,14 +133,14 @@
       "expected_value": 1.97
     },
     "2449": {
-      "samples": 89,
-      "winrate": 40.4,
-      "avg": 0.57,
+      "samples": 88,
+      "winrate": 40.9,
+      "avg": 0.65,
       "best": 12.0,
       "worst": -6.0,
-      "std": 8.02,
-      "sharpe_like": 0.072,
-      "expected_value": 0.57
+      "std": 8.03,
+      "sharpe_like": 0.081,
+      "expected_value": 0.65
     },
     "6285": {
       "samples": 78,
@@ -173,14 +183,14 @@
       "expected_value": -0.93
     },
     "2376": {
-      "samples": 58,
-      "winrate": 36.2,
-      "avg": -0.31,
+      "samples": 57,
+      "winrate": 36.8,
+      "avg": -0.21,
       "best": 12.0,
       "worst": -6.0,
-      "std": 7.57,
-      "sharpe_like": -0.041,
-      "expected_value": -0.31
+      "std": 7.6,
+      "sharpe_like": -0.027,
+      "expected_value": -0.21
     },
     "2356": {
       "samples": 71,
@@ -193,14 +203,14 @@
       "expected_value": -1.73
     },
     "2357": {
-      "samples": 78,
-      "winrate": 55.1,
-      "avg": 3.13,
+      "samples": 77,
+      "winrate": 55.8,
+      "avg": 3.25,
       "best": 12.0,
       "worst": -6.0,
-      "std": 8.27,
-      "sharpe_like": 0.379,
-      "expected_value": 3.13
+      "std": 8.26,
+      "sharpe_like": 0.394,
+      "expected_value": 3.25
     },
     "3231": {
       "samples": 58,
@@ -223,14 +233,14 @@
       "expected_value": 1.33
     },
     "3017": {
-      "samples": 74,
-      "winrate": 39.2,
-      "avg": 1.05,
+      "samples": 73,
+      "winrate": 39.7,
+      "avg": 1.15,
       "best": 12.0,
       "worst": -6.0,
-      "std": 8.79,
-      "sharpe_like": 0.12,
-      "expected_value": 1.05
+      "std": 8.81,
+      "sharpe_like": 0.131,
+      "expected_value": 1.15
     },
     "3653": {
       "samples": 62,
@@ -423,14 +433,14 @@
       "expected_value": 1.48
     },
     "2884": {
-      "samples": 62,
-      "winrate": 46.8,
-      "avg": -0.09,
+      "samples": 61,
+      "winrate": 47.5,
+      "avg": 0.01,
       "best": 9.09,
       "worst": -6.0,
-      "std": 4.12,
-      "sharpe_like": -0.022,
-      "expected_value": -0.09
+      "std": 4.08,
+      "sharpe_like": 0.001,
+      "expected_value": 0.01
     },
     "2885": {
       "samples": 77,
@@ -513,24 +523,24 @@
       "expected_value": -0.9
     },
     "5880": {
-      "samples": 154,
-      "winrate": 33.1,
-      "avg": -0.82,
+      "samples": 153,
+      "winrate": 33.3,
+      "avg": -0.79,
       "best": 9.03,
       "worst": -6.0,
-      "std": 3.03,
-      "sharpe_like": -0.272,
-      "expected_value": -0.82
+      "std": 3.01,
+      "sharpe_like": -0.262,
+      "expected_value": -0.79
     },
     "1101": {
-      "samples": 76,
-      "winrate": 40.8,
-      "avg": -0.4,
+      "samples": 75,
+      "winrate": 41.3,
+      "avg": -0.32,
       "best": 12.0,
       "worst": -6.0,
       "std": 5.58,
-      "sharpe_like": -0.071,
-      "expected_value": -0.4
+      "sharpe_like": -0.058,
+      "expected_value": -0.32
     },
     "1102": {
       "samples": 86,
@@ -543,14 +553,14 @@
       "expected_value": 0.35
     },
     "1216": {
-      "samples": 93,
-      "winrate": 49.5,
-      "avg": -0.44,
+      "samples": 92,
+      "winrate": 50.0,
+      "avg": -0.38,
       "best": 7.91,
       "worst": -6.0,
-      "std": 3.88,
-      "sharpe_like": -0.115,
-      "expected_value": -0.44
+      "std": 3.85,
+      "sharpe_like": -0.1,
+      "expected_value": -0.38
     },
     "1303": {
       "samples": 73,
@@ -733,14 +743,14 @@
       "expected_value": -0.02
     },
     "2002": {
-      "samples": 103,
-      "winrate": 34.0,
-      "avg": -1.61,
+      "samples": 102,
+      "winrate": 34.3,
+      "avg": -1.57,
       "best": 12.0,
       "worst": -6.0,
       "std": 4.76,
-      "sharpe_like": -0.339,
-      "expected_value": -1.61
+      "sharpe_like": -0.33,
+      "expected_value": -1.57
     },
     "1605": {
       "samples": 72,
@@ -763,14 +773,14 @@
       "expected_value": 1.7
     },
     "1504": {
-      "samples": 73,
-      "winrate": 42.5,
-      "avg": 0.81,
+      "samples": 72,
+      "winrate": 43.1,
+      "avg": 0.91,
       "best": 12.0,
       "worst": -6.0,
       "std": 7.03,
-      "sharpe_like": 0.116,
-      "expected_value": 0.81
+      "sharpe_like": 0.129,
+      "expected_value": 0.91
     },
     "1503": {
       "samples": 41,
@@ -803,14 +813,14 @@
       "expected_value": -2.63
     },
     "6446": {
-      "samples": 44,
-      "winrate": 20.5,
-      "avg": -2.07,
+      "samples": 43,
+      "winrate": 20.9,
+      "avg": -1.98,
       "best": 12.0,
       "worst": -6.0,
-      "std": 6.87,
-      "sharpe_like": -0.301,
-      "expected_value": -2.07
+      "std": 6.92,
+      "sharpe_like": -0.286,
+      "expected_value": -1.98
     },
     "4736": {
       "samples": 69,
@@ -1013,14 +1023,14 @@
       "expected_value": 1.62
     },
     "2363": {
-      "samples": 59,
-      "winrate": 33.9,
-      "avg": 0.13,
+      "samples": 60,
+      "winrate": 35.0,
+      "avg": 0.32,
       "best": 12.0,
       "worst": -6.0,
-      "std": 8.37,
-      "sharpe_like": 0.015,
-      "expected_value": 0.13
+      "std": 8.44,
+      "sharpe_like": 0.038,
+      "expected_value": 0.32
     },
     "3406": {
       "samples": 115,
@@ -1073,12 +1083,12 @@
       "expected_value": -0.29
     },
     "3211": {
-      "samples": 115,
-      "winrate": 41.7,
+      "samples": 114,
+      "winrate": 42.1,
       "avg": 0.82,
       "best": 12.0,
       "worst": -6.0,
-      "std": 7.31,
+      "std": 7.34,
       "sharpe_like": 0.112,
       "expected_value": 0.82
     },
@@ -1103,14 +1113,14 @@
       "expected_value": -2.45
     },
     "3450": {
-      "samples": 90,
-      "winrate": 38.9,
-      "avg": 1.0,
+      "samples": 89,
+      "winrate": 39.3,
+      "avg": 1.08,
       "best": 12.0,
       "worst": -6.0,
-      "std": 8.77,
-      "sharpe_like": 0.114,
-      "expected_value": 1.0
+      "std": 8.79,
+      "sharpe_like": 0.123,
+      "expected_value": 1.08
     },
     "6679": {
       "samples": 70,

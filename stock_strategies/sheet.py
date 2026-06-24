@@ -18,14 +18,22 @@ def get_gsheet():
 
 
 def read_watchlist() -> list[dict]:
-    """從 Google Sheet Watchlist 分頁讀股票清單"""
+    """從 Google Sheet Watchlist 分頁讀股票清單。
+
+    自動把純數字 stock_id 補成 4 碼字串（避免 ETF "0050" 被 gspread 讀成 int 50
+    而導致 FinMind 抓不到資料）。
+    """
     sh = get_gsheet()
     ws = sh.worksheet("Watchlist")
     rows = ws.get_all_records()
-    enabled = [
-        r for r in rows
-        if str(r.get("enabled", "")).upper() in ("TRUE", "1", "YES")
-    ]
+    enabled = []
+    for r in rows:
+        if str(r.get("enabled", "")).upper() not in ("TRUE", "1", "YES"):
+            continue
+        sid = r.get("stock_id")
+        if isinstance(sid, int) or (isinstance(sid, str) and sid.isdigit()):
+            r["stock_id"] = str(sid).zfill(4)
+        enabled.append(r)
     return enabled
 
 
