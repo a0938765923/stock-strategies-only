@@ -10,6 +10,7 @@ from .chips_risk import detect_chip_risks
 from .technical_warning import detect_technical_warnings
 from .events_calendar import warnings_for_stock
 from .news_sentiment import get_news_sentiment
+from .finlab_extra import detect_finlab_warnings
 
 
 def aggregate_warnings(stock_id: str, max_total: int = 5,
@@ -26,6 +27,7 @@ def aggregate_warnings(stock_id: str, max_total: int = 5,
     chips = detect_chip_risks(stock_id)
     technical = detect_technical_warnings(stock_id)
     events = warnings_for_stock(stock_id)
+    finlab = detect_finlab_warnings(stock_id)
 
     news_data = {"warnings": [], "sentiment": "⚪ 無資料", "score": 0}
     if include_news:
@@ -35,9 +37,9 @@ def aggregate_warnings(stock_id: str, max_total: int = 5,
             pass
     news = news_data.get("warnings", [])
 
-    # 合併（順序：技術 > 籌碼 > 新聞 > 事件，因為技術最即時）
+    # 合併（順序：技術 > 籌碼 > FinLab 借券 > 新聞 > 事件）
     all_warnings: list[str] = []
-    for src in (technical, chips, news, events):
+    for src in (technical, chips, finlab, news, events):
         for w in src:
             if w not in all_warnings:
                 all_warnings.append(w)
@@ -63,6 +65,7 @@ def aggregate_warnings(stock_id: str, max_total: int = 5,
         "technical": technical,
         "events": events,
         "news": news,
+        "finlab": finlab,
         "sentiment_label": news_data.get("sentiment", "⚪"),
         "sentiment_score": news_data.get("score", 0),
         "all_warnings": all_warnings,

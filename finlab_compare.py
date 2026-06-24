@@ -174,6 +174,45 @@ def compare_with_ours(finlab_results: dict):
             print(f"     → 可以參考 FinLab 策略結構")
 
 
+def format_telegram_summary(finlab_results: dict) -> str:
+    """月度自驗證 Telegram 摘要"""
+    from datetime import datetime
+    lines = [
+        f"📊 *月度系統自我驗證* {datetime.now().strftime('%Y/%m/%d')}",
+        "",
+        "_用 FinLab 業界引擎跑 3 種經典策略對比我們系統_",
+        "",
+    ]
+    # 讀我們的結果
+    ours_path = Path("portfolio_simulate_result.json")
+    if ours_path.exists():
+        ours = json.loads(ours_path.read_text(encoding="utf-8"))
+        lines.append("🏆 *你的系統*")
+        lines.append(f"  CAGR: *{ours['cagr']*100:+.2f}%*")
+        lines.append(f"  MDD:  {ours['max_drawdown']*100:+.2f}%")
+        lines.append(f"  Sharpe: *{ours['sharpe']:.2f}*")
+        lines.append(f"  勝率: {ours['win_rate']*100:.1f}%（{ours['total_trades']} 筆）")
+        lines.append("")
+
+    lines.append("📈 *FinLab 基準策略*")
+    for key, label in [
+        ("momentum", "動能突破"),
+        ("revenue", "月營收動能"),
+        ("lowvol_momentum", "低波動+動能"),
+    ]:
+        r = finlab_results.get(key, {})
+        if "error" in r:
+            lines.append(f"  {label}: ⚠️ 失敗")
+        elif r:
+            lines.append(
+                f"  {label}: CAGR {r['cagr']:+.2f}% / Sharpe {r['sharpe']:.2f} / MDD {r['mdd']:+.1f}%"
+            )
+    lines.append("")
+    lines.append("━━━━━━━━━━")
+    lines.append("📝 _Sharpe > 1 即業界等級、> 1.5 為頂級。_")
+    return "\n".join(lines)
+
+
 def main():
     print("=" * 75)
     print("🎯 FinLab 業界級回測引擎對戰")
@@ -192,6 +231,15 @@ def main():
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(finlab_results, f, ensure_ascii=False, indent=2)
     print(f"\n💾 詳細結果存到 {out_path.name}")
+
+    # Telegram 推播（環境變數啟用）
+    if os.environ.get("PUSH_TELEGRAM") in ("1", "true", "True", "yes"):
+        try:
+            from stock_strategies.notify import send_telegram
+            send_telegram(format_telegram_summary(finlab_results))
+            print("📱 Telegram 已推播")
+        except Exception as e:
+            print(f"⚠️ Telegram 失敗: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

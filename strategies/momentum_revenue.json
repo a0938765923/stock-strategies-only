@@ -1,0 +1,35 @@
+{
+  "id": "momentum_revenue",
+  "name": "動能+營收策略 V1（FinLab 公開策略庫靈感）",
+  "description": "靈感來自 FinLab 公開策略庫經典組合：月營收 YoY > 0 + MoM > 0 + 站上 60MA。強調「業績成長中的強勢股」。比 multifactor 更偏重營收動能（YoY 權重 30%）。",
+  "source": "manual",
+  "created_at": "2026-06-25T00:00:00Z",
+  "updated_at": "2026-06-25T00:00:00Z",
+  "params": {
+    "eps_threshold": 4.0,
+    "roe_threshold": 12.0,
+    "fundamental_pass_required": true,
+
+    "backtest_years": 3,
+    "hold_days": 30,
+    "min_tech_score_for_signal": 65,
+
+    "target_return": 0.15,
+    "stop_loss": 0.07,
+
+    "weight_fundamental": 0.20,
+    "weight_technical": 0.25,
+    "weight_backtest": 0.55,
+    "min_total_score_for_buy": 65,
+    "min_tech_score_for_buy": 55,
+
+    "use_ma_alignment": true,
+    "use_bollinger_bounce": true,
+    "use_kd_golden_cross": true,
+    "use_macd_bullish": true,
+    "use_volume_patterns": true,
+
+    "market_filter_enabled": true,
+    "market_filter_ma_period": 20
+  }
+}

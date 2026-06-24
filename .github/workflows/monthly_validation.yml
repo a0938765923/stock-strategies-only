@@ -1,0 +1,39 @@
+name: Monthly FinLab Validation
+
+on:
+  schedule:
+    # 每月 1 號 02:00 UTC = 10:00 台灣（避開盤中）
+    - cron: '0 2 1 * *'
+  workflow_dispatch:  # 允許手動觸發
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: uv sync
+
+      - name: Run portfolio simulate (calibrate baseline)
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_CREDS_JSON: ${{ secrets.GOOGLE_CREDS_JSON }}
+        run: uv run python portfolio_simulate.py
+
+      - name: Run FinLab compare (with Telegram push)
+        env:
+          FINLAB_TOKEN: ${{ secrets.FINLAB_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PUSH_TELEGRAM: "1"
+        run: uv run python finlab_compare.py
